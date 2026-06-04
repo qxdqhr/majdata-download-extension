@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Majdata 下载列表</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="header">
+        <div>
+          <h1>下载列表</h1>
+          <p id="count-label">加载中...</p>
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <label class="checkbox-row">
+          <input id="select-all" type="checkbox" />
+          <span>全选</span>
+        </label>
+      </div>
+
+      <main id="list" class="list" aria-live="polite"></main>
+
+      <footer class="footer">
+        <button id="export-selected" type="button" class="btn primary">导出选中</button>
+        <button id="export-all" type="button" class="btn">导出全部</button>
+        <button id="remove-selected" type="button" class="btn danger">删除选中</button>
+        <button id="clear-all" type="button" class="btn ghost">清空全部</button>
+      </footer>
+
+      <p id="status" class="status" role="status"></p>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+dist/
+output/
+.wxt/
+node_modules/
+*.zip
+*.crx
+*.pem
+.DS_Store
+.env
+.env.*

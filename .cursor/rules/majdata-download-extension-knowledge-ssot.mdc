@@ -1,0 +1,8 @@
+---
+description: 每次对话自动注入 majdata-download-extension 架构知识库（SSOT）
+alwaysApply: true
+---
+
+对本仓库（majdata-download-extension）的 Agent 对话，以下文件为架构与协作约定的 **单一事实来源**；规划或修改代码时须遵守；若与无依据的推测冲突，以该文件为准。
+
+@.cursor/KNOWLEDGE_BASE.md
