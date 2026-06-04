@@ -1,5 +1,11 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
+import {
+  cancelBatchDownload,
+  getBatchJobStatus,
+  isBatchDownloadRunning,
+  startBatchDownload,
+} from '@/background/batchDownload';
 import { buildQueueExport } from '@/shared/export';
 import { parseQueueFile, rowsToQueueItems } from '@/shared/import';
 import {
@@ -83,6 +89,30 @@ async function handleMessage(message: BackgroundMessage): Promise<BackgroundResp
     }
     case 'SETTINGS_GET': {
       return { ok: true, settings };
+    }
+    case 'BATCH_START': {
+      if (isBatchDownloadRunning()) {
+        return { ok: false, error: '已有批量下载任务进行中' };
+      }
+
+      const items = await getQueueItemsByIds(message.payload.songIds);
+      if (items.length === 0) {
+        return { ok: false, error: '没有可下载的条目' };
+      }
+
+      startBatchDownload(items, settings).catch((error) => {
+        console.error('[majdata] batch download failed', error);
+      });
+
+      return { ok: true, started: true };
+    }
+    case 'BATCH_CANCEL': {
+      cancelBatchDownload();
+      return { ok: true, count: 0 };
+    }
+    case 'BATCH_GET_STATUS': {
+      const job = await getBatchJobStatus();
+      return { ok: true, job };
     }
     default:
       return { ok: false, error: '未知消息类型' };

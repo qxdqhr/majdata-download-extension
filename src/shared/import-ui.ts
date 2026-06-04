@@ -42,8 +42,9 @@ export async function importQueueFromFile(file: File): Promise<ImportQueueResult
 }
 
 export async function openImportWindow(): Promise<void> {
+  const runtime = browser.runtime as unknown as { getURL(path: string): string };
   await browser.windows.create({
-    url: browser.runtime.getURL('/import.html'),
+    url: runtime.getURL('/import.html'),
     type: 'popup',
     width: 420,
     height: 300,

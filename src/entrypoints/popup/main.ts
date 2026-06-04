@@ -4,6 +4,7 @@ import {
   sendRuntimeMessage,
   showErrorAlert,
 } from '@/shared/import-ui';
+import { BATCH_JOB_STORAGE_KEY, BATCH_MAX_ITEMS, type BatchJobState } from '@/shared/batch-job';
 import type { BackgroundResponse, QueueItem } from '@/shared/types';
 import type { ExportFormat } from '@/shared/settings';
 
@@ -11,15 +12,32 @@ const countLabel = document.getElementById('count-label')!;
 const listEl = document.getElementById('list')!;
 const statusEl = document.getElementById('status')!;
 const selectAllEl = document.getElementById('select-all') as HTMLInputElement;
-const exportSelectedBtn = document.getElementById('export-selected')!;
-const exportAllBtn = document.getElementById('export-all')!;
-const importBtn = document.getElementById('import-btn')!;
+const exportSelectedBtn = document.getElementById('export-selected') as HTMLButtonElement;
+const exportAllBtn = document.getElementById('export-all') as HTMLButtonElement;
+const importBtn = document.getElementById('import-btn') as HTMLButtonElement;
+const batchSelectedBtn = document.getElementById('batch-selected') as HTMLButtonElement;
+const batchAllBtn = document.getElementById('batch-all') as HTMLButtonElement;
+const batchPanel = document.getElementById('batch-panel')!;
+const progressFill = document.getElementById('progress-fill')!;
+const batchStatusEl = document.getElementById('batch-status')!;
+const batchCancelBtn = document.getElementById('batch-cancel') as HTMLButtonElement;
 const openSettingsBtn = document.getElementById('open-settings')!;
-const removeSelectedBtn = document.getElementById('remove-selected')!;
-const clearAllBtn = document.getElementById('clear-all')!;
+const removeSelectedBtn = document.getElementById('remove-selected') as HTMLButtonElement;
+const clearAllBtn = document.getElementById('clear-all') as HTMLButtonElement;
+
+const batchActionButtons: HTMLButtonElement[] = [
+  batchSelectedBtn,
+  batchAllBtn,
+  exportSelectedBtn,
+  exportAllBtn,
+  importBtn,
+  removeSelectedBtn,
+  clearAllBtn,
+];
 
 let items: QueueItem[] = [];
 let exportFormat: ExportFormat = 'txt';
+let lastNotifiedStatus: BatchJobState['status'] | null = null;
 const selected = new Set<string>();
 
 function exportFormatLabel(format: ExportFormat): string {
@@ -40,6 +58,96 @@ function setStatus(message: string, isError = false): void {
 function showError(message: string, title = '操作失败'): void {
   setStatus(message, true);
   showErrorAlert(title, message);
+}
+
+function setBatchControlsEnabled(enabled: boolean): void {
+  for (const button of batchActionButtons) {
+    button.disabled = !enabled;
+  }
+  selectAllEl.disabled = !enabled || items.length === 0;
+}
+
+function applyBatchJob(job: BatchJobState | null | undefined): void {
+  if (!job || job.status === 'idle') {
+    batchPanel.classList.add('hidden');
+    setBatchControlsEnabled(true);
+    return;
+  }
+
+  batchPanel.classList.remove('hidden');
+
+  if (job.status === 'running') {
+    setBatchControlsEnabled(false);
+    const percent = job.total > 0 ? Math.round((job.current / job.total) * 100) : 0;
+    progressFill.style.width = `${percent}%`;
+    batchStatusEl.textContent = job.currentTitle
+      ? `正在下载 ${job.current}/${job.total}：${job.currentTitle}`
+      : `正在下载 ${job.current}/${job.total}`;
+    return;
+  }
+
+  setBatchControlsEnabled(true);
+
+  if (job.status === 'done' && lastNotifiedStatus !== 'done') {
+    lastNotifiedStatus = 'done';
+    const failedHint = job.failed.length > 0 ? `\n\n失败 ${job.failed.length} 首（详见 ZIP 内 manifest.json）` : '';
+    alert(`批量下载完成\n\n成功 ${job.success}/${job.total} 首${failedHint}`);
+    batchPanel.classList.add('hidden');
+    setStatus(`批量下载完成：成功 ${job.success}/${job.total} 首`);
+    return;
+  }
+
+  if (job.status === 'error' && lastNotifiedStatus !== 'error') {
+    lastNotifiedStatus = 'error';
+    showError(job.error ?? '批量下载失败', '批量下载失败');
+    batchPanel.classList.add('hidden');
+    return;
+  }
+
+  if (job.status === 'cancelled' && lastNotifiedStatus !== 'cancelled') {
+    lastNotifiedStatus = 'cancelled';
+    setStatus('已取消批量下载');
+    batchPanel.classList.add('hidden');
+  }
+}
+
+async function refreshBatchStatus(): Promise<void> {
+  const response = await sendMessage<{ ok: true; job: BatchJobState | null } | { ok: false; error: string }>({
+    type: 'BATCH_GET_STATUS',
+  });
+  if (response.ok && 'job' in response) {
+    applyBatchJob(response.job);
+  }
+}
+
+async function startBatchDownload(songIds: string[]): Promise<void> {
+  if (songIds.length === 0) {
+    showError('请先选择要下载的条目', '批量下载失败');
+    return;
+  }
+  if (songIds.length > BATCH_MAX_ITEMS) {
+    showError(`一次最多下载 ${BATCH_MAX_ITEMS} 首，请减少选中数量`, '批量下载失败');
+    return;
+  }
+
+  lastNotifiedStatus = null;
+
+  try {
+    const response = await sendMessage<{ ok: true; started: true } | { ok: false; error: string }>({
+      type: 'BATCH_START',
+      payload: { songIds },
+    });
+
+    if (!response.ok || !('started' in response)) {
+      showError('error' in response ? response.error : '无法开始批量下载', '批量下载失败');
+      return;
+    }
+
+    await refreshBatchStatus();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '批量下载失败';
+    showError(message, '批量下载失败');
+  }
 }
 
 function formatTime(iso: string): string {
@@ -230,6 +338,19 @@ importBtn.addEventListener('click', async () => {
   }
 });
 
+batchSelectedBtn.addEventListener('click', () => {
+  startBatchDownload([...selected]);
+});
+
+batchAllBtn.addEventListener('click', () => {
+  startBatchDownload(items.map((item) => item.songId));
+});
+
+batchCancelBtn.addEventListener('click', async () => {
+  await sendMessage({ type: 'BATCH_CANCEL' });
+  setStatus('正在取消…');
+});
+
 openSettingsBtn.addEventListener('click', () => {
   browser.runtime.openOptionsPage();
 });
@@ -262,8 +383,14 @@ function escapeAttr(text: string): string {
 }
 
 browser.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'local' || !changes.majdata_queue_v1) return;
-  loadItems().catch(() => undefined);
+  if (areaName === 'local' && changes.majdata_queue_v1) {
+    loadItems().catch(() => undefined);
+  }
+  if (areaName === 'session' && changes[BATCH_JOB_STORAGE_KEY]) {
+    applyBatchJob(changes[BATCH_JOB_STORAGE_KEY].newValue as BatchJobState | undefined);
+  }
 });
 
-Promise.all([loadSettings(), loadItems()]).catch(() => showError('无法加载扩展数据', '加载失败'));
+Promise.all([loadSettings(), loadItems(), refreshBatchStatus()]).catch(() =>
+  showError('无法加载扩展数据', '加载失败'),
+);

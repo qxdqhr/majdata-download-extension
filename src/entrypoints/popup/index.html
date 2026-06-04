@@ -27,7 +27,17 @@
 
       <main id="list" class="list" aria-live="polite"></main>
 
+      <section id="batch-panel" class="batch-panel hidden" aria-live="polite">
+        <div class="progress-track">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <p id="batch-status" class="batch-status">准备下载…</p>
+        <button id="batch-cancel" type="button" class="btn ghost batch-cancel">取消下载</button>
+      </section>
+
       <footer class="footer">
+        <button id="batch-selected" type="button" class="btn accent">批量下载选中</button>
+        <button id="batch-all" type="button" class="btn accent">批量下载全部</button>
         <button id="export-selected" type="button" class="btn primary">导出选中</button>
         <button id="export-all" type="button" class="btn">导出全部</button>
         <button id="import-btn" type="button" class="btn">导入列表</button>

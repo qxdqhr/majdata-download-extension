@@ -1,6 +1,7 @@
 import { beforeEach, vi } from 'vitest';
 
 const localStore: Record<string, unknown> = {};
+const sessionStore: Record<string, unknown> = {};
 
 vi.mock('wxt/browser', () => ({
   browser: {
@@ -23,6 +24,28 @@ vi.mock('wxt/browser', () => ({
           Object.assign(localStore, items);
         },
       },
+      session: {
+        get: async (keys: string | string[] | Record<string, unknown>) => {
+          if (typeof keys === 'string') {
+            return { [keys]: sessionStore[keys] };
+          }
+          if (Array.isArray(keys)) {
+            const result: Record<string, unknown> = {};
+            for (const key of keys) {
+              result[key] = sessionStore[key];
+            }
+            return result;
+          }
+          return { ...sessionStore };
+        },
+        set: async (items: Record<string, unknown>) => {
+          Object.assign(sessionStore, items);
+        },
+        remove: async (keys: string | string[]) => {
+          const list = Array.isArray(keys) ? keys : [keys];
+          for (const key of list) delete sessionStore[key];
+        },
+      },
       sync: {
         get: async () => ({}),
         set: async () => undefined,
@@ -30,6 +53,12 @@ vi.mock('wxt/browser', () => ({
           addListener: () => undefined,
         },
       },
+    },
+    downloads: {
+      download: async () => 1,
+    },
+    windows: {
+      create: async () => ({ id: 1 }),
     },
     action: {
       setBadgeBackgroundColor: async () => undefined,
@@ -41,6 +70,7 @@ vi.mock('wxt/browser', () => ({
       },
       sendMessage: async () => undefined,
       openOptionsPage: () => undefined,
+      getURL: (path: string) => `chrome-extension://test/${path.replace(/^\//, '')}`,
     },
   },
 }));
@@ -48,5 +78,8 @@ vi.mock('wxt/browser', () => ({
 beforeEach(() => {
   for (const key of Object.keys(localStore)) {
     delete localStore[key];
+  }
+  for (const key of Object.keys(sessionStore)) {
+    delete sessionStore[key];
   }
 });

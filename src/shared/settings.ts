@@ -11,6 +11,9 @@ export interface ExtensionSettings {
   interceptEnabled: boolean;
   defaultDownloadAction: DefaultDownloadAction;
   queueLimit: number;
+  batchConcurrency: number;
+  batchIncludeVideo: boolean;
+  batchZipName: string;
 }
 
 export const SETTINGS_STORAGE_KEY = 'majdata_settings_v1';
@@ -21,6 +24,9 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   interceptEnabled: true,
   defaultDownloadAction: 'ask',
   queueLimit: DEFAULT_QUEUE_LIMIT,
+  batchConcurrency: 1,
+  batchIncludeVideo: true,
+  batchZipName: 'majdata-playlist',
 };
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -31,6 +37,8 @@ export async function loadSettings(): Promise<ExtensionSettings> {
     ...DEFAULT_SETTINGS,
     ...stored,
     queueLimit: clampQueueLimit(stored.queueLimit ?? DEFAULT_SETTINGS.queueLimit),
+    batchConcurrency: clampBatchConcurrency(stored.batchConcurrency ?? DEFAULT_SETTINGS.batchConcurrency),
+    batchZipName: sanitizeZipPrefix(stored.batchZipName ?? DEFAULT_SETTINGS.batchZipName),
   };
 }
 
@@ -43,6 +51,12 @@ export async function saveSettings(partial: Partial<ExtensionSettings>): Promise
   if (partial.queueLimit !== undefined) {
     next.queueLimit = clampQueueLimit(partial.queueLimit);
   }
+  if (partial.batchConcurrency !== undefined) {
+    next.batchConcurrency = clampBatchConcurrency(partial.batchConcurrency);
+  }
+  if (partial.batchZipName !== undefined) {
+    next.batchZipName = sanitizeZipPrefix(partial.batchZipName);
+  }
   await browser.storage.sync.set({ [SETTINGS_STORAGE_KEY]: next });
   return next;
 }
@@ -50,4 +64,14 @@ export async function saveSettings(partial: Partial<ExtensionSettings>): Promise
 function clampQueueLimit(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_QUEUE_LIMIT;
   return Math.min(2000, Math.max(1, Math.floor(value)));
+}
+
+function clampBatchConcurrency(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_SETTINGS.batchConcurrency;
+  return Math.min(2, Math.max(1, Math.floor(value)));
+}
+
+function sanitizeZipPrefix(value: string): string {
+  const trimmed = value.trim().replace(/[/\\:*?"<>|]/g, '_');
+  return trimmed || DEFAULT_SETTINGS.batchZipName;
 }

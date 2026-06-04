@@ -1,7 +1,7 @@
 {
   "name": "majdata-download-extension",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -18,5 +18,8 @@
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
     "wxt": "^0.20.7"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
   }
 }

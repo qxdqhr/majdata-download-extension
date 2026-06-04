@@ -165,6 +165,52 @@ body {
   color: #64748b;
 }
 
+.btn.accent {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.batch-panel {
+  padding: 10px 16px 0;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.batch-panel.hidden {
+  display: none;
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+  transition: width 0.2s ease;
+}
+
+.batch-status {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #334155;
+}
+
+.batch-cancel {
+  margin-top: 8px;
+  width: 100%;
+}
+
 .status {
   min-height: 20px;
   margin: 0;

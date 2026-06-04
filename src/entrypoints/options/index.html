@@ -35,6 +35,28 @@
         </section>
 
         <section class="section">
+          <h2>批量下载</h2>
+
+          <label class="field">
+            <span class="label">并发数</span>
+            <select id="batch-concurrency">
+              <option value="1">1（推荐，避免限流）</option>
+              <option value="2">2</option>
+            </select>
+          </label>
+
+          <label class="field checkbox">
+            <input id="batch-include-video" type="checkbox" />
+            <span>尝试下载 pv.mp4（可选资源）</span>
+          </label>
+
+          <label class="field">
+            <span class="label">ZIP 文件名前缀</span>
+            <input id="batch-zip-name" type="text" maxlength="40" />
+          </label>
+        </section>
+
+        <section class="section">
           <h2>下载行为</h2>
 
           <label class="field checkbox">
