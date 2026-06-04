@@ -114,6 +114,19 @@ body {
   color: #ef4444;
 }
 
+.header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-btn {
+  font-size: 18px;
+  padding: 4px 8px;
+  margin-top: 2px;
+}
+
 .footer {
   display: grid;
   grid-template-columns: 1fr 1fr;

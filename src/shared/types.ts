@@ -1,3 +1,5 @@
+import type { ExtensionSettings } from './settings';
+
 export interface AssetUrls {
   track: string;
   chart: string;
@@ -31,12 +33,23 @@ export type BackgroundMessage =
   | { type: 'QUEUE_REMOVE'; payload: { songIds: string[] } }
   | { type: 'QUEUE_CLEAR' }
   | { type: 'QUEUE_EXPORT'; payload: { songIds: string[] } }
-  | { type: 'QUEUE_COUNT' };
+  | { type: 'QUEUE_IMPORT'; payload: { content: string; filename?: string } }
+  | { type: 'QUEUE_COUNT' }
+  | { type: 'SETTINGS_GET' };
+
+export interface ImportQueueResult {
+  imported: number;
+  updated: number;
+  skipped: number;
+  count: number;
+}
 
 export type BackgroundResponse =
   | { ok: true; duplicate?: boolean; count?: number }
   | { ok: true; items: QueueItem[] }
-  | { ok: true; filename: string; content: string }
+  | { ok: true; filename: string; content: string; mimeType?: string }
+  | { ok: true; imported: number; updated: number; skipped: number; count: number }
+  | { ok: true; settings: ExtensionSettings }
   | { ok: false; error: string };
 
 export interface ParsedExportRow {

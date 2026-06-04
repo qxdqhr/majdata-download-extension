@@ -59,18 +59,60 @@ def456 | 另一首 | https://majdata.net/song?id=def456 | https://majdata.net/ap
 ### 2.2 文件名
 
 ```
-majdata-queue-YYYYMMDD-HHmmss.txt
+majdata-queue-YYYYMMDD-HHmmss.txt   # format=txt
+majdata-queue-YYYYMMDD-HHmmss.json  # format=json
 ```
 
-## 3. JSONL 格式（可选，P1）
+## 3. JSON 文档格式（阶段 1.5，设置可选）
 
-文件头仍用 `# MAJDATA-QUEUE v1` + `# format: jsonl`，之后每行一个 JSON：
+当 `exportFormat=json` 时，导出**单个 JSON 文件**（非 JSONL），便于工具一次 `JSON.parse`：
 
 ```json
-{"songId":"abc123","title":"测试谱面","pageUrl":"https://majdata.net/song?id=abc123","assets":{"track":"...","chart":"...","image":"...","video":"..."},"addedAt":"2026-06-04T01:00:00.000Z"}
+{
+  "version": "MAJDATA-QUEUE v1",
+  "exportedAt": "2026-06-04T09:30:00.000Z",
+  "origin": "https://majdata.net",
+  "format": "json",
+  "count": 2,
+  "items": [
+    {
+      "songId": "abc123",
+      "title": "测试谱面",
+      "artist": "Artist",
+      "pageUrl": "https://majdata.net/song?id=abc123",
+      "assets": {
+        "track": "https://majdata.net/api3/api/maichart/abc123/track",
+        "chart": "https://majdata.net/api3/api/maichart/abc123/chart",
+        "image": "https://majdata.net/api3/api/maichart/abc123/image?fullImage=true",
+        "video": "https://majdata.net/api3/api/maichart/abc123/video"
+      },
+      "addedAt": "2026-06-04T01:00:00.000Z",
+      "updatedAt": "2026-06-04T01:00:00.000Z"
+    }
+  ]
+}
 ```
 
-## 4. 参考解析器（TypeScript）
+**文件名：** `majdata-queue-YYYYMMDD-HHmmss.json`
+
+**字段说明：**
+
+- `items[]` 与扩展内 `QueueItem` 对齐；导入时可缺 `assets`，由 `songId` 自动补全
+- `artist` 可选
+
+## 4. 导入检测规则
+
+| 优先级 | 条件 | 解析器 |
+|--------|------|--------|
+| 1 | 扩展名 `.json` 或内容以 `{` 且含 `"version":"MAJDATA-QUEUE v1"` | `parseQueueJson` |
+| 2 | 首行 `# MAJDATA-QUEUE v1` 或含 `format: line` | `parseQueueTxt` |
+| 3 | 无法识别 | 抛出错误，不修改队列 |
+
+## 5. JSONL 格式（遗留，可选兼容）
+
+文件头仍用 `# MAJDATA-QUEUE v1` + `# format: jsonl`，之后每行一个 JSON（阶段 1.5 **默认不导出 JSONL**，仅导入时可兼容解析）。
+
+## 6. 参考解析器（TypeScript）
 
 ```typescript
 const MAGIC = '# MAJDATA-QUEUE v1';
@@ -120,16 +162,15 @@ def parse_queue_txt(path: str) -> list[dict]:
     return rows
 ```
 
-## 6. 版本演进
+## 7. 版本演进
 
 | 版本 | 变更 |
 |------|------|
-| v1 | 初始：7 列 pipe 分隔 |
-| v2（预留） | 可增加 `artist`、`hash` 列，解析器读 header `columns:` |
+| v1 | 初始：TXT 7 列 pipe 分隔 |
+| v1+json | 增加 JSON 文档格式（`format: json`），导入双向兼容 TXT/JSON |
+| v2（预留） | TXT 可增加 `artist`、`hash` 列 |
 
-解析器应读取 `# columns:` 行决定映射，而非硬编码列序。
-
-## 7. 与内存模型映射
+## 8. 与内存模型映射
 
 `QueueItem`（扩展内）→ 导出行：
 

@@ -1,5 +1,11 @@
 import { browser } from 'wxt/browser';
+import {
+  openImportWindow,
+  sendRuntimeMessage,
+  showErrorAlert,
+} from '@/shared/import-ui';
 import type { BackgroundResponse, QueueItem } from '@/shared/types';
+import type { ExportFormat } from '@/shared/settings';
 
 const countLabel = document.getElementById('count-label')!;
 const listEl = document.getElementById('list')!;
@@ -7,15 +13,33 @@ const statusEl = document.getElementById('status')!;
 const selectAllEl = document.getElementById('select-all') as HTMLInputElement;
 const exportSelectedBtn = document.getElementById('export-selected')!;
 const exportAllBtn = document.getElementById('export-all')!;
+const importBtn = document.getElementById('import-btn')!;
+const openSettingsBtn = document.getElementById('open-settings')!;
 const removeSelectedBtn = document.getElementById('remove-selected')!;
 const clearAllBtn = document.getElementById('clear-all')!;
 
 let items: QueueItem[] = [];
+let exportFormat: ExportFormat = 'txt';
 const selected = new Set<string>();
+
+function exportFormatLabel(format: ExportFormat): string {
+  return format === 'json' ? 'JSON' : 'TXT';
+}
+
+function updateExportButtonLabels(): void {
+  const label = exportFormatLabel(exportFormat);
+  exportSelectedBtn.textContent = `导出选中 (${label})`;
+  exportAllBtn.textContent = `导出全部 (${label})`;
+}
 
 function setStatus(message: string, isError = false): void {
   statusEl.textContent = message;
   statusEl.classList.toggle('error', isError);
+}
+
+function showError(message: string, title = '操作失败'): void {
+  setStatus(message, true);
+  showErrorAlert(title, message);
 }
 
 function formatTime(iso: string): string {
@@ -73,7 +97,18 @@ function syncSelectAllState(): void {
 }
 
 async function sendMessage<T extends BackgroundResponse>(message: unknown): Promise<T> {
-  return browser.runtime.sendMessage(message) as Promise<T>;
+  return sendRuntimeMessage<T>(message);
+}
+
+async function loadSettings(): Promise<void> {
+  const response = await sendMessage<
+    { ok: true; settings: { exportFormat: ExportFormat } } | { ok: false; error: string }
+  >({ type: 'SETTINGS_GET' });
+
+  if (response.ok && 'settings' in response) {
+    exportFormat = response.settings.exportFormat;
+    updateExportButtonLabels();
+  }
 }
 
 async function loadItems(): Promise<void> {
@@ -82,7 +117,7 @@ async function loadItems(): Promise<void> {
   });
 
   if (!response.ok || !('items' in response)) {
-    setStatus('加载失败', true);
+    showError('无法加载下载列表', '加载失败');
     return;
   }
 
@@ -96,35 +131,42 @@ async function loadItems(): Promise<void> {
 
 async function exportItems(songIds: string[]): Promise<void> {
   if (songIds.length === 0) {
-    setStatus('请先选择要导出的条目', true);
+    showError('请先选择要导出的条目', '导出失败');
     return;
   }
 
-  const response = await sendMessage<
-    { ok: true; filename: string; content: string } | { ok: false; error: string }
-  >({
-    type: 'QUEUE_EXPORT',
-    payload: { songIds },
-  });
+  try {
+    const response = await sendMessage<
+      { ok: true; filename: string; content: string; mimeType?: string } | { ok: false; error: string }
+    >({
+      type: 'QUEUE_EXPORT',
+      payload: { songIds },
+    });
 
-  if (!response.ok || !('content' in response)) {
-    setStatus('error' in response ? response.error : '导出失败', true);
-    return;
+    if (!response.ok || !('content' in response)) {
+      showError('error' in response ? response.error : '导出失败', '导出失败');
+      return;
+    }
+
+    const blob = new Blob([response.content], {
+      type: response.mimeType ?? 'text/plain;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = response.filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setStatus(`已导出 ${songIds.length} 条 (${exportFormatLabel(exportFormat)})`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '导出失败';
+    showError(message, '导出失败');
   }
-
-  const blob = new Blob([response.content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = response.filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-  setStatus(`已导出 ${songIds.length} 条`);
 }
 
 async function removeItems(songIds: string[]): Promise<void> {
   if (songIds.length === 0) {
-    setStatus('请先选择要删除的条目', true);
+    showError('请先选择要删除的条目', '删除失败');
     return;
   }
 
@@ -134,7 +176,7 @@ async function removeItems(songIds: string[]): Promise<void> {
   });
 
   if (!response.ok) {
-    setStatus('删除失败', true);
+    showError('error' in response ? response.error : '删除失败', '删除失败');
     return;
   }
 
@@ -179,6 +221,19 @@ exportAllBtn.addEventListener('click', () => {
   exportItems(items.map((item) => item.songId));
 });
 
+importBtn.addEventListener('click', async () => {
+  try {
+    await openImportWindow();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '无法打开导入窗口';
+    showError(message, '导入失败');
+  }
+});
+
+openSettingsBtn.addEventListener('click', () => {
+  browser.runtime.openOptionsPage();
+});
+
 removeSelectedBtn.addEventListener('click', () => {
   removeItems([...selected]);
 });
@@ -187,7 +242,7 @@ clearAllBtn.addEventListener('click', async () => {
   if (!confirm('确定清空全部下载列表？')) return;
   const response = await sendMessage<{ ok: true } | { ok: false; error: string }>({ type: 'QUEUE_CLEAR' });
   if (!response.ok) {
-    setStatus('清空失败', true);
+    showError('error' in response ? response.error : '清空失败', '清空失败');
     return;
   }
   selected.clear();
@@ -206,4 +261,9 @@ function escapeAttr(text: string): string {
   return escapeHtml(text).replace(/"/g, '&quot;');
 }
 
-loadItems().catch(() => setStatus('加载失败', true));
+browser.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local' || !changes.majdata_queue_v1) return;
+  loadItems().catch(() => undefined);
+});
+
+Promise.all([loadSettings(), loadItems()]).catch(() => showError('无法加载扩展数据', '加载失败'));

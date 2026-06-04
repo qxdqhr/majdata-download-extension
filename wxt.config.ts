@@ -10,7 +10,7 @@ export default defineConfig({
   manifest: {
     name: 'Majdata Download Queue',
     description: '为 majdata.net 添加下载队列，支持批量导出下载链接',
-    permissions: ['storage'],
+    permissions: ['storage', 'windows'],
     host_permissions: ['https://majdata.net/*', 'https://www.majdata.net/*'],
     action: {
       default_title: 'Majdata 下载列表',

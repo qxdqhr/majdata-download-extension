@@ -79,3 +79,70 @@ export async function getQueueItemsByIds(songIds: string[]): Promise<QueueItem[]
   const items = await listQueueItems();
   return items.filter((item) => idSet.has(item.songId));
 }
+
+export interface ImportQueueResult {
+  imported: number;
+  updated: number;
+  skipped: number;
+  count: number;
+}
+
+export async function importQueueItems(
+  incoming: QueueItem[],
+  strategy: 'merge' | 'replace',
+  limit: number = DEFAULT_QUEUE_LIMIT,
+): Promise<ImportQueueResult> {
+  const now = new Date().toISOString();
+  let imported = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  if (strategy === 'replace') {
+    const nextItems: QueueItem[] = [];
+    for (const item of incoming) {
+      if (nextItems.length >= limit) {
+        skipped += 1;
+        continue;
+      }
+      nextItems.push({
+        ...item,
+        addedAt: item.addedAt || now,
+        updatedAt: now,
+      });
+      imported += 1;
+    }
+
+    await saveQueueState({ version: 1, items: nextItems });
+    return { imported, updated: 0, skipped, count: nextItems.length };
+  }
+
+  const state = await loadQueueState();
+  for (const item of incoming) {
+    const index = state.items.findIndex((existing) => existing.songId === item.songId);
+    if (index >= 0) {
+      state.items[index] = {
+        ...state.items[index],
+        ...item,
+        addedAt: state.items[index].addedAt,
+        updatedAt: now,
+      };
+      updated += 1;
+      continue;
+    }
+
+    if (state.items.length >= limit) {
+      skipped += 1;
+      continue;
+    }
+
+    state.items.push({
+      ...item,
+      addedAt: item.addedAt || now,
+      updatedAt: now,
+    });
+    imported += 1;
+  }
+
+  await saveQueueState(state);
+  return { imported, updated, skipped, count: state.items.length };
+}

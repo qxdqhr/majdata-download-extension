@@ -12,19 +12,24 @@ Majdata Net 是 maimai 自制谱分享站，前端开源仓库：[TeamMajdata/Ma
 
 | 阶段 | 目标 | 状态 |
 |------|------|------|
-| **阶段 1** | 下载确认框 + 队列缓存 + Popup 管理 + 导出 TXT | **已实现 v0.1.0** |
-| **阶段 2** | 将导出链接提交远端机器自动下载 | 远期 |
+| **阶段 1** | 下载确认框 + 队列 + Popup + 导出 TXT | ✅ v0.1 |
+| **阶段 1.5** | 设置页 + 导出 TXT/JSON + 导入 | 📋 已规划 → v0.2 |
+| **阶段 2** | 批量下载谱面 + 歌单 ZIP | 📋 已规划 → v0.3 |
+| **阶段 3** | 远端 CLI / Agent（可选） | 💡 展望 |
 
 ## 文档索引
 
 | 文档 | 说明 |
 |------|------|
-| [docs/01-site-analysis.md](./docs/01-site-analysis.md) | 站点与开源代码调研结论 |
-| [docs/02-prd.md](./docs/02-prd.md) | 产品需求文档（阶段 1） |
-| [docs/03-architecture.md](./docs/03-architecture.md) | 技术架构与模块设计 |
-| [docs/04-phase1-tasks.md](./docs/04-phase1-tasks.md) | 阶段 1 子任务拆分与验收标准 |
-| [docs/05-phase2-outlook.md](./docs/05-phase2-outlook.md) | 阶段 2 远端下载展望 |
-| [docs/06-export-format.md](./docs/06-export-format.md) | 导出 TXT / JSONL 格式规范 |
+| [docs/09-roadmap.md](./docs/09-roadmap.md) | **路线图总览（推荐先看）** |
+| [docs/07-phase1.5-prd.md](./docs/07-phase1.5-prd.md) | 设置 / 导入 / JSON 导出 |
+| [docs/08-phase2-prd-batch-download.md](./docs/08-phase2-prd-batch-download.md) | 批量下载与歌单压缩包 |
+| [docs/01-site-analysis.md](./docs/01-site-analysis.md) | 站点调研 |
+| [docs/02-prd.md](./docs/02-prd.md) | 阶段 1 PRD |
+| [docs/03-architecture.md](./docs/03-architecture.md) | 技术架构 |
+| [docs/04-phase1-tasks.md](./docs/04-phase1-tasks.md) | 全阶段子任务 |
+| [docs/05-phase2-outlook.md](./docs/05-phase2-outlook.md) | 阶段 3 远端 CLI |
+| [docs/06-export-format.md](./docs/06-export-format.md) | 队列 TXT / JSON 格式 |
 
 ## 技术选型（拟定）
 

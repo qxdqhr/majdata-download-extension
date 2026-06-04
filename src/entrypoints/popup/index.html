@@ -9,9 +9,12 @@
   <body>
     <div id="app">
       <header class="header">
-        <div>
-          <h1>下载列表</h1>
-          <p id="count-label">加载中...</p>
+        <div class="header-row">
+          <div>
+            <h1>下载列表</h1>
+            <p id="count-label">加载中...</p>
+          </div>
+          <button id="open-settings" type="button" class="icon-btn settings-btn" title="设置">⚙</button>
         </div>
       </header>
 
@@ -27,6 +30,7 @@
       <footer class="footer">
         <button id="export-selected" type="button" class="btn primary">导出选中</button>
         <button id="export-all" type="button" class="btn">导出全部</button>
+        <button id="import-btn" type="button" class="btn">导入列表</button>
         <button id="remove-selected" type="button" class="btn danger">删除选中</button>
         <button id="clear-all" type="button" class="btn ghost">清空全部</button>
       </footer>

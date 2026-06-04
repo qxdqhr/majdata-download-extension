@@ -1,14 +1,17 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
-import { buildQueueExportContent, formatExportFilename } from '@/shared/export';
+import { buildQueueExport } from '@/shared/export';
+import { parseQueueFile, rowsToQueueItems } from '@/shared/import';
 import {
   addToQueue,
   clearQueue,
   getQueueCount,
   getQueueItemsByIds,
+  importQueueItems,
   listQueueItems,
   removeFromQueue,
 } from '@/shared/queue';
+import { loadSettings } from '@/shared/settings';
 import type { BackgroundMessage, BackgroundResponse } from '@/shared/types';
 
 async function updateBadge(count: number): Promise<void> {
@@ -18,10 +21,12 @@ async function updateBadge(count: number): Promise<void> {
 }
 
 async function handleMessage(message: BackgroundMessage): Promise<BackgroundResponse> {
+  const settings = await loadSettings();
+
   switch (message.type) {
     case 'QUEUE_ADD': {
       try {
-        const result = await addToQueue(message.payload);
+        const result = await addToQueue(message.payload, settings.queueLimit);
         await updateBadge(result.count);
         return { ok: true, duplicate: result.duplicate, count: result.count };
       } catch (error) {
@@ -48,15 +53,36 @@ async function handleMessage(message: BackgroundMessage): Promise<BackgroundResp
       if (items.length === 0) {
         return { ok: false, error: '没有可导出的条目' };
       }
+      const exported = buildQueueExport(items, settings.exportFormat);
       return {
         ok: true,
-        filename: formatExportFilename(),
-        content: buildQueueExportContent(items),
+        filename: exported.filename,
+        content: exported.content,
+        mimeType: exported.mimeType,
       };
+    }
+    case 'QUEUE_IMPORT': {
+      try {
+        const parsed = parseQueueFile(message.payload.content, message.payload.filename);
+        if (parsed.rows.length === 0) {
+          return { ok: false, error: '文件中没有可导入的条目' };
+        }
+
+        const items = rowsToQueueItems(parsed.rows);
+        const result = await importQueueItems(items, settings.importMergeStrategy, settings.queueLimit);
+        await updateBadge(result.count);
+        return { ok: true, ...result };
+      } catch (error) {
+        const err = error instanceof Error ? error.message : '导入失败';
+        return { ok: false, error: err };
+      }
     }
     case 'QUEUE_COUNT': {
       const count = await getQueueCount();
       return { ok: true, count };
+    }
+    case 'SETTINGS_GET': {
+      return { ok: true, settings };
     }
     default:
       return { ok: false, error: '未知消息类型' };

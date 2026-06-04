@@ -3,8 +3,16 @@ import { showConfirmDialog } from './confirmDialog';
 import { findDownloadButton } from './findDownloadButton';
 import { parseSongContext } from './parseSongContext';
 import { showToast } from './toast';
+import { loadSettings } from '@/shared/settings';
+import type { DefaultDownloadAction, ExtensionSettings } from '@/shared/settings';
 
 let bypassNextDownload = false;
+let settings: ExtensionSettings | null = null;
+
+async function refreshSettings(): Promise<ExtensionSettings> {
+  settings = await loadSettings();
+  return settings;
+}
 
 async function handleQueueAdd(payload: ReturnType<typeof parseSongContext>): Promise<void> {
   if (!payload) return;
@@ -27,11 +35,30 @@ async function handleQueueAdd(payload: ReturnType<typeof parseSongContext>): Pro
   }
 }
 
+async function resolveDownloadAction(
+  title: string,
+  defaultAction: DefaultDownloadAction,
+): Promise<'direct' | 'queue' | 'cancel'> {
+  if (defaultAction === 'direct') return 'direct';
+  if (defaultAction === 'queue') return 'queue';
+  return showConfirmDialog(title);
+}
+
 export function installDownloadInterceptor(): void {
+  refreshSettings().catch(() => undefined);
+
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'sync' || !changes.majdata_settings_v1) return;
+    refreshSettings().catch(() => undefined);
+  });
+
   document.addEventListener(
     'click',
     async (event) => {
       if (bypassNextDownload) return;
+
+      const currentSettings = settings ?? (await refreshSettings());
+      if (!currentSettings.interceptEnabled) return;
 
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -49,7 +76,7 @@ export function installDownloadInterceptor(): void {
         return;
       }
 
-      const choice = await showConfirmDialog(ctx.title);
+      const choice = await resolveDownloadAction(ctx.title, currentSettings.defaultDownloadAction);
 
       if (choice === 'direct') {
         bypassNextDownload = true;

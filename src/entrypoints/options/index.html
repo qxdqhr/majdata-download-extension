@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Majdata 扩展设置</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="header">
+        <h1>Majdata 下载队列设置</h1>
+        <p>配置导出格式、导入策略与下载行为</p>
+      </header>
+
+      <main class="main">
+        <section class="section">
+          <h2>导入 / 导出</h2>
+
+          <label class="field">
+            <span class="label">默认导出格式</span>
+            <select id="export-format">
+              <option value="txt">TXT（结构化文本）</option>
+              <option value="json">JSON（单文件文档）</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="label">导入策略</span>
+            <select id="import-merge-strategy">
+              <option value="merge">合并（同 ID 更新，保留已有条目）</option>
+              <option value="replace">覆盖（清空后写入文件内容）</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="section">
+          <h2>下载行为</h2>
+
+          <label class="field checkbox">
+            <input id="intercept-enabled" type="checkbox" />
+            <span>拦截 majdata.net 下载按钮</span>
+          </label>
+
+          <label class="field">
+            <span class="label">默认下载行为</span>
+            <select id="default-download-action">
+              <option value="ask">每次询问</option>
+              <option value="direct">直接下载（站点原逻辑）</option>
+              <option value="queue">加入下载列表</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="label">队列上限</span>
+            <input id="queue-limit" type="number" min="1" max="2000" step="1" />
+          </label>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <button id="save-btn" type="button" class="btn primary">保存设置</button>
+        <p id="status" class="status" role="status"></p>
+      </footer>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
