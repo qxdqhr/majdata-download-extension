@@ -18,6 +18,8 @@ export interface BatchJobState {
   success: number;
   failed: BatchJobFailedItem[];
   error?: string;
+  localServerUrl?: string;
+  localServerError?: string;
 }
 
 export function emptyBatchJob(): BatchJobState {

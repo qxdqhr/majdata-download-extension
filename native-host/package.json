@@ -1,0 +1,16 @@
+{
+  "name": "majdata-download-native-host",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Chrome Native Messaging host: unzip playlist ZIP and start http-server",
+  "bin": {
+    "majdata-server-host": "./src/host.mjs"
+  },
+  "scripts": {
+    "start": "node ./src/host.mjs"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}

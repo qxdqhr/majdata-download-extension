@@ -104,6 +104,20 @@ input[type="text"] {
   color: #fff;
 }
 
+.btn.secondary {
+  align-self: flex-start;
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.hint.error {
+  color: #dc2626;
+}
+
 .status {
   min-height: 20px;
   margin: 10px 0 0;

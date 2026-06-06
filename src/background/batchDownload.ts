@@ -1,6 +1,10 @@
 import JSZip from 'jszip';
 import { browser } from 'wxt/browser';
 import {
+  notifyLocalServerStarted,
+  startLocalServerForDownload,
+} from '@/background/localServer';
+import {
   BATCH_JOB_STORAGE_KEY,
   BATCH_MAX_ITEMS,
   BATCH_PLAYLIST_VERSION,
@@ -61,12 +65,48 @@ function buildManifest(job: BatchJobState, total: number) {
   };
 }
 
-async function downloadZipBlob(blob: Blob, filename: string): Promise<void> {
-  const url = URL.createObjectURL(blob);
+async function downloadZipArchive(
+  zip: JSZip,
+  filename: string,
+  saveAs: boolean,
+): Promise<number> {
+  // Service Worker 中无 URL.createObjectURL，使用 data URL 交给 downloads API
+  const base64 = await zip.generateAsync({
+    type: 'base64',
+    compression: 'DEFLATE',
+  });
+
+  return browser.downloads.download({
+    url: `data:application/zip;base64,${base64}`,
+    filename,
+    saveAs,
+  });
+}
+
+async function tryAutoStartLocalServer(
+  downloadId: number,
+  settings: ExtensionSettings,
+  job: BatchJobState,
+): Promise<void> {
+  if (!settings.autoStartLocalServer) return;
+
+  job.currentTitle = '正在启动本地 HTTP 服务…';
+  await saveBatchJob({ ...job });
+
   try {
-    await browser.downloads.download({ url, filename, saveAs: true });
+    const result = await startLocalServerForDownload(downloadId, settings);
+    if (result.ok && result.url) {
+      job.localServerUrl = result.url;
+      job.localServerError = undefined;
+      await notifyLocalServerStarted(result.url, result.root);
+      return;
+    }
+    job.localServerError = result.error ?? '本地 HTTP 服务启动失败';
+  } catch (error) {
+    job.localServerError = error instanceof Error ? error.message : '本地 HTTP 服务启动失败';
   } finally {
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    job.currentTitle = '';
+    await saveBatchJob({ ...job });
   }
 }
 
@@ -145,11 +185,6 @@ export async function startBatchDownload(
     job.currentTitle = '正在打包 ZIP…';
     await saveBatchJob({ ...job });
 
-    const blob = await zip.generateAsync({
-      type: 'blob',
-      compression: 'DEFLATE',
-    });
-
     if (signal.aborted) {
       job.status = 'cancelled';
       job.currentTitle = '';
@@ -158,7 +193,9 @@ export async function startBatchDownload(
     }
 
     const filename = formatBatchZipFilename(settings.batchZipName);
-    await downloadZipBlob(blob, filename);
+    const downloadId = await downloadZipArchive(zip, filename, !settings.autoStartLocalServer);
+
+    await tryAutoStartLocalServer(downloadId, settings, job);
 
     job.status = 'done';
     job.current = items.length;

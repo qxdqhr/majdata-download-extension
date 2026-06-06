@@ -14,6 +14,8 @@ export interface ExtensionSettings {
   batchConcurrency: number;
   batchIncludeVideo: boolean;
   batchZipName: string;
+  autoStartLocalServer: boolean;
+  localServerPort: number;
 }
 
 export const SETTINGS_STORAGE_KEY = 'majdata_settings_v1';
@@ -27,6 +29,8 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   batchConcurrency: 1,
   batchIncludeVideo: true,
   batchZipName: 'majdata-playlist',
+  autoStartLocalServer: false,
+  localServerPort: 8080,
 };
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -39,6 +43,7 @@ export async function loadSettings(): Promise<ExtensionSettings> {
     queueLimit: clampQueueLimit(stored.queueLimit ?? DEFAULT_SETTINGS.queueLimit),
     batchConcurrency: clampBatchConcurrency(stored.batchConcurrency ?? DEFAULT_SETTINGS.batchConcurrency),
     batchZipName: sanitizeZipPrefix(stored.batchZipName ?? DEFAULT_SETTINGS.batchZipName),
+    localServerPort: clampLocalServerPort(stored.localServerPort ?? DEFAULT_SETTINGS.localServerPort),
   };
 }
 
@@ -57,6 +62,9 @@ export async function saveSettings(partial: Partial<ExtensionSettings>): Promise
   if (partial.batchZipName !== undefined) {
     next.batchZipName = sanitizeZipPrefix(partial.batchZipName);
   }
+  if (partial.localServerPort !== undefined) {
+    next.localServerPort = clampLocalServerPort(partial.localServerPort);
+  }
   await browser.storage.sync.set({ [SETTINGS_STORAGE_KEY]: next });
   return next;
 }
@@ -74,4 +82,9 @@ function clampBatchConcurrency(value: number): number {
 function sanitizeZipPrefix(value: string): string {
   const trimmed = value.trim().replace(/[/\\:*?"<>|]/g, '_');
   return trimmed || DEFAULT_SETTINGS.batchZipName;
+}
+
+function clampLocalServerPort(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_SETTINGS.localServerPort;
+  return Math.min(65535, Math.max(1024, Math.floor(value)));
 }

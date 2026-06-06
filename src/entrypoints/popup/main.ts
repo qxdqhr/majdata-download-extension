@@ -91,9 +91,19 @@ function applyBatchJob(job: BatchJobState | null | undefined): void {
   if (job.status === 'done' && lastNotifiedStatus !== 'done') {
     lastNotifiedStatus = 'done';
     const failedHint = job.failed.length > 0 ? `\n\n失败 ${job.failed.length} 首（详见 ZIP 内 manifest.json）` : '';
-    alert(`批量下载完成\n\n成功 ${job.success}/${job.total} 首${failedHint}`);
+    const serverHint = job.localServerUrl
+      ? `\n\n本地服务：${job.localServerUrl}`
+      : job.localServerError
+        ? `\n\n本地服务未启动：${job.localServerError}`
+        : '';
+    alert(`批量下载完成\n\n成功 ${job.success}/${job.total} 首${failedHint}${serverHint}`);
     batchPanel.classList.add('hidden');
-    setStatus(`批量下载完成：成功 ${job.success}/${job.total} 首`);
+    const serverStatus = job.localServerUrl
+      ? `；本地服务 ${job.localServerUrl}`
+      : job.localServerError
+        ? `；本地服务失败：${job.localServerError}`
+        : '';
+    setStatus(`批量下载完成：成功 ${job.success}/${job.total} 首${serverStatus}`);
     return;
   }
 

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchChartAssets } from '@/shared/fetchChartAssets';
+import {
+  extensionFromFilename,
+  fetchChartAssets,
+  parseFilenameFromContentDisposition,
+  resolveAssetExtension,
+  zipNameForExtension,
+} from '@/shared/fetchChartAssets';
 import type { QueueItem } from '@/shared/types';
 
 const sampleItem: QueueItem = {
@@ -16,30 +22,64 @@ const sampleItem: QueueItem = {
   updatedAt: '2026-06-04T01:00:00.000Z',
 };
 
+function responseWithDisposition(
+  body: BodyInit,
+  filename: string,
+  contentType?: string,
+): Response {
+  const headers: Record<string, string> = {
+    'content-disposition': `attachment; filename=${filename}; filename*=UTF-8''${encodeURIComponent(filename)}`,
+  };
+  if (contentType) {
+    headers['content-type'] = contentType;
+  }
+  return new Response(body, { status: 200, headers });
+}
+
+describe('fetchChartAssets helpers', () => {
+  it('parses content-disposition filename', () => {
+    expect(
+      parseFilenameFromContentDisposition("attachment; filename=bg.mp4; filename*=UTF-8''bg.mp4"),
+    ).toBe('bg.mp4');
+    expect(extensionFromFilename('track.mp3')).toBe('mp3');
+    expect(zipNameForExtension('mp4')).toBe('pv.mp4');
+  });
+
+  it('resolves extension from response headers', () => {
+    const response = responseWithDisposition(new Uint8Array([1]), 'bg.mp4', 'video/mp4');
+    expect(
+      resolveAssetExtension(response, 'https://majdata.net/api3/api/maichart/x/video'),
+    ).toBe('mp4');
+  });
+});
+
 describe('fetchChartAssets', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('fetches required assets and optional video', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => {
-        if (url.includes('/video')) {
-          return new Response(new Uint8Array([4, 5, 6]), { status: 200 });
-        }
-        if (url.includes('/chart')) {
-          return new Response('chart-data', { status: 200 });
-        }
-        return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
-      }),
-    );
+  it('fetches required assets and optional video in parallel by file extension', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/video')) {
+        return responseWithDisposition(new Uint8Array([4, 5, 6]), 'bg.mp4', 'video/mp4');
+      }
+      if (url.includes('/chart')) {
+        return responseWithDisposition('chart-data', 'maidata.txt', 'text/plain');
+      }
+      if (url.includes('/image')) {
+        return responseWithDisposition(new Uint8Array([1, 2, 3]), 'bg.png', 'image/png');
+      }
+      return responseWithDisposition(new Uint8Array([1, 2, 3]), 'track.mp3', 'audio/mp3');
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     const assets = await fetchChartAssets(sampleItem, true);
-    expect(assets.chart).toBe('chart-data');
-    expect(assets.track.byteLength).toBe(3);
-    expect(assets.image.byteLength).toBe(3);
-    expect(assets.video?.byteLength).toBe(3);
+    expect(assets['maidata.txt']).toBe('chart-data');
+    expect((assets['track.mp3'] as ArrayBuffer).byteLength).toBe(3);
+    expect((assets['bg.png'] as ArrayBuffer).byteLength).toBe(3);
+    expect((assets['pv.mp4'] as ArrayBuffer).byteLength).toBe(3);
+
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/video'))).toBe(true);
   });
 
   it('ignores video failure when includeVideo is true', async () => {
@@ -50,13 +90,34 @@ describe('fetchChartAssets', () => {
           return new Response('', { status: 404 });
         }
         if (url.includes('/chart')) {
-          return new Response('chart-data', { status: 200 });
+          return responseWithDisposition('chart-data', 'maidata.txt', 'text/plain');
         }
-        return new Response(new Uint8Array([1]), { status: 200 });
+        if (url.includes('/image')) {
+          return responseWithDisposition(new Uint8Array([1]), 'bg.jpg', 'image/jpeg');
+        }
+        return responseWithDisposition(new Uint8Array([1]), 'track.mp3', 'audio/mp3');
       }),
     );
 
     const assets = await fetchChartAssets(sampleItem, true);
-    expect(assets.video).toBeUndefined();
+    expect(assets['pv.mp4']).toBeUndefined();
+    expect(assets['track.mp3']).toBeDefined();
+  });
+
+  it('skips video url when includeVideo is false', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/chart')) {
+        return responseWithDisposition('chart-data', 'maidata.txt', 'text/plain');
+      }
+      if (url.includes('/image')) {
+        return responseWithDisposition(new Uint8Array([1]), 'bg.jpg', 'image/jpeg');
+      }
+      return responseWithDisposition(new Uint8Array([1]), 'track.mp3', 'audio/mp3');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const assets = await fetchChartAssets(sampleItem, false);
+    expect(assets['pv.mp4']).toBeUndefined();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/video'))).toBe(false);
   });
 });

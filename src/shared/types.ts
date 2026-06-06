@@ -39,7 +39,8 @@ export type BackgroundMessage =
   | { type: 'SETTINGS_GET' }
   | { type: 'BATCH_START'; payload: { songIds: string[] } }
   | { type: 'BATCH_CANCEL' }
-  | { type: 'BATCH_GET_STATUS' };
+  | { type: 'BATCH_GET_STATUS' }
+  | { type: 'LOCAL_SERVER_PING' };
 
 export interface ImportQueueResult {
   imported: number;
@@ -56,6 +57,7 @@ export type BackgroundResponse =
   | { ok: true; settings: ExtensionSettings }
   | { ok: true; started: true }
   | { ok: true; job: BatchJobState | null }
+  | { ok: true; localServer: { ok: boolean; url?: string; error?: string; running?: boolean } }
   | { ok: false; error: string };
 
 export interface ParsedExportRow {

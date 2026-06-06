@@ -6,6 +6,7 @@ import {
   isBatchDownloadRunning,
   startBatchDownload,
 } from '@/background/batchDownload';
+import { pingNativeHost } from '@/background/localServer';
 import { buildQueueExport } from '@/shared/export';
 import { parseQueueFile, rowsToQueueItems } from '@/shared/import';
 import {
@@ -113,6 +114,10 @@ async function handleMessage(message: BackgroundMessage): Promise<BackgroundResp
     case 'BATCH_GET_STATUS': {
       const job = await getBatchJobStatus();
       return { ok: true, job };
+    }
+    case 'LOCAL_SERVER_PING': {
+      const localServer = await pingNativeHost();
+      return { ok: true, localServer };
     }
     default:
       return { ok: false, error: '未知消息类型' };

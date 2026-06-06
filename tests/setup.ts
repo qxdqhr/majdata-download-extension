@@ -56,6 +56,17 @@ vi.mock('wxt/browser', () => ({
     },
     downloads: {
       download: async () => 1,
+      search: async () => [],
+      onChanged: {
+        addListener: () => undefined,
+        removeListener: () => undefined,
+      },
+    },
+    notifications: {
+      create: async () => 'notification-id',
+    },
+    cookies: {
+      getAll: async () => [],
     },
     windows: {
       create: async () => ({ id: 1 }),
@@ -69,6 +80,7 @@ vi.mock('wxt/browser', () => ({
         addListener: () => undefined,
       },
       sendMessage: async () => undefined,
+      sendNativeMessage: async () => ({ ok: true, running: false }),
       openOptionsPage: () => undefined,
       getURL: (path: string) => `chrome-extension://test/${path.replace(/^\//, '')}`,
     },
