@@ -1,4 +1,6 @@
 import type { BatchJobState } from './batch-job';
+import type { LocalServerUiState } from './local-server-state';
+import type { InstallPlatform } from './native-host-installer';
 import type { ExtensionSettings } from './settings';
 
 export interface AssetUrls {
@@ -40,7 +42,12 @@ export type BackgroundMessage =
   | { type: 'BATCH_START'; payload: { songIds: string[] } }
   | { type: 'BATCH_CANCEL' }
   | { type: 'BATCH_GET_STATUS' }
-  | { type: 'LOCAL_SERVER_PING' };
+  | { type: 'LOCAL_SERVER_PING' }
+  | { type: 'LOCAL_SERVER_GET_STATE' }
+  | { type: 'LOCAL_SERVER_START'; payload?: { zipPath?: string } }
+  | { type: 'LOCAL_SERVER_STOP' }
+  | { type: 'LOCAL_SERVER_GET_SETUP' }
+  | { type: 'LOCAL_SERVER_DOWNLOAD_INSTALLER' };
 
 export interface ImportQueueResult {
   imported: number;
@@ -58,6 +65,26 @@ export type BackgroundResponse =
   | { ok: true; started: true }
   | { ok: true; job: BatchJobState | null }
   | { ok: true; localServer: { ok: boolean; url?: string; error?: string; running?: boolean } }
+  | { ok: true; localServerState: LocalServerUiState }
+  | {
+      ok: true;
+      setup: {
+        extensionId: string;
+        platform: InstallPlatform;
+        hints: { title: string; steps: string[]; downloadButtonLabel: string };
+      };
+    }
+  | {
+      ok: true;
+      installer: {
+        filename: string;
+        savedPath: string;
+        runCommand: string;
+        platform: InstallPlatform;
+        hints: { title: string; steps: string[]; downloadButtonLabel: string };
+        renameHint?: string;
+      };
+    }
   | { ok: false; error: string };
 
 export interface ParsedExportRow {

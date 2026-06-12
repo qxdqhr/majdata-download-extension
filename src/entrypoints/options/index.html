@@ -35,6 +35,22 @@
         </section>
 
         <section class="section">
+          <h2>本地分享</h2>
+
+          <p class="section-hint">在 Popup「本地分享」面板手动开启 HTTP 服务；此处配置端口与检测 Native Host。</p>
+
+          <label class="field">
+            <span class="label">本地服务端口</span>
+            <input id="local-server-port" type="number" min="1024" max="65535" step="1" />
+          </label>
+
+          <div class="field">
+            <button id="test-local-server" type="button" class="btn secondary">检测 Native Host</button>
+            <p id="local-server-status" class="hint"></p>
+          </div>
+        </section>
+
+        <section class="section">
           <h2>批量下载</h2>
 
           <label class="field">
@@ -54,21 +70,6 @@
             <span class="label">ZIP 文件名前缀</span>
             <input id="batch-zip-name" type="text" maxlength="40" />
           </label>
-
-          <label class="field checkbox">
-            <input id="auto-start-local-server" type="checkbox" />
-            <span>下载完成后启动本地 HTTP 服务（需安装 native-host）</span>
-          </label>
-
-          <label class="field">
-            <span class="label">本地服务端口</span>
-            <input id="local-server-port" type="number" min="1024" max="65535" step="1" />
-          </label>
-
-          <div class="field">
-            <button id="test-local-server" type="button" class="btn secondary">检测 Native Host</button>
-            <p id="local-server-status" class="hint"></p>
-          </div>
         </section>
 
         <section class="section">

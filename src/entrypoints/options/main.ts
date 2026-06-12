@@ -13,7 +13,6 @@ const importStrategyEl = document.getElementById('import-merge-strategy') as HTM
 const batchConcurrencyEl = document.getElementById('batch-concurrency') as HTMLSelectElement;
 const batchIncludeVideoEl = document.getElementById('batch-include-video') as HTMLInputElement;
 const batchZipNameEl = document.getElementById('batch-zip-name') as HTMLInputElement;
-const autoStartLocalServerEl = document.getElementById('auto-start-local-server') as HTMLInputElement;
 const localServerPortEl = document.getElementById('local-server-port') as HTMLInputElement;
 const testLocalServerBtn = document.getElementById('test-local-server') as HTMLButtonElement;
 const localServerStatusEl = document.getElementById('local-server-status')!;
@@ -34,7 +33,6 @@ function applySettingsToForm(settings = DEFAULT_SETTINGS): void {
   batchConcurrencyEl.value = String(settings.batchConcurrency);
   batchIncludeVideoEl.checked = settings.batchIncludeVideo;
   batchZipNameEl.value = settings.batchZipName;
-  autoStartLocalServerEl.checked = settings.autoStartLocalServer;
   localServerPortEl.value = String(settings.localServerPort);
   interceptEnabledEl.checked = settings.interceptEnabled;
   defaultActionEl.value = settings.defaultDownloadAction;
@@ -56,7 +54,6 @@ saveBtn.addEventListener('click', async () => {
       batchConcurrency,
       batchIncludeVideo: batchIncludeVideoEl.checked,
       batchZipName: batchZipNameEl.value,
-      autoStartLocalServer: autoStartLocalServerEl.checked,
       localServerPort: Number.parseInt(localServerPortEl.value, 10),
       interceptEnabled: interceptEnabledEl.checked,
       defaultDownloadAction: defaultActionEl.value as DefaultDownloadAction,
@@ -85,7 +82,7 @@ testLocalServerBtn.addEventListener('click', async () => {
       localServerStatusEl.classList.remove('error');
       return;
     }
-    localServerStatusEl.textContent = localServer.error ?? 'Native Host 不可用，请先运行 native-host/install-linux.sh';
+    localServerStatusEl.textContent = localServer.error ?? 'Native Host 不可用，请在 Popup「本地分享」下载安装脚本';
     localServerStatusEl.classList.add('error');
   } catch (error) {
     const message = error instanceof Error ? error.message : '检测失败';

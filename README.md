@@ -51,7 +51,7 @@ Majdata Net 是 maimai 自制谱分享站，前端开源仓库：[TeamMajdata/Ma
 cd majdata-download-extension
 pnpm install
 pnpm dev      # 开发模式（HMR）
-pnpm build    # 生产构建 → dist/chrome-mv3/
+pnpm build    # 生产构建 → dist/chrome-mv3/ + dist/*.zip
 pnpm test     # 单元测试
 pnpm lint     # TypeScript 检查
 ```
@@ -61,16 +61,9 @@ pnpm lint     # TypeScript 检查
 1. 打开 `chrome://extensions`
 2. 开启「开发者模式」
 3. 点击「加载已解压的扩展程序」
-4. 选择 `dist/chrome-mv3/` 目录
+4. 选择 `dist/chrome-mv3/` 目录（或解压 `dist/majdata-download-extension-*.zip` 后加载）
 
-### 使用方式
-
-1. 访问 [majdata.net](https://majdata.net/) 浏览谱面
-2. 点击「下载」→ 选择 **直接下载** 或 **加入下载列表**
-3. 点击浏览器工具栏扩展图标，在 Popup 中勾选条目
-4. 点击「导出选中」生成 `majdata-queue-*.txt`
-
-> 开发模式下运行 `pnpm dev` 后，加载 `dist/chrome-mv3-dev/` 目录。
+> **分发/安装请只用 `pnpm build` 产物。** `pnpm dev` 会额外生成 `chrome-mv3-dev/`（脚本指向 localhost，CSS 无法离线加载），仅供本机热更新调试，不要打包或分发。
 
 ## 关联仓库
 

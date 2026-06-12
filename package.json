@@ -1,13 +1,13 @@
 {
   "name": "majdata-download-extension",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
-    "dev": "wxt",
-    "dev:clean": "wxt clean && wxt",
-    "build": "wxt build",
-    "zip": "wxt zip",
+    "dev": "node scripts/sync-native-host-public.mjs && wxt",
+    "dev:clean": "wxt clean && node scripts/sync-native-host-public.mjs && wxt",
+    "build": "node scripts/sync-native-host-public.mjs && wxt zip && node scripts/prune-dist.mjs",
+    "zip": "node scripts/sync-native-host-public.mjs && wxt zip && node scripts/prune-dist.mjs",
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "postinstall": "wxt prepare"

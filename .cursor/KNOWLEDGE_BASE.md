@@ -11,6 +11,8 @@
 
 **核心约束：** 直接下载必须走站点原 `downloadSong` 逻辑（bypass 重放点击），扩展不重写 ZIP 打包。
 
+**本地 HTTP 服务（v0.3+）：** 扩展无法直接执行本机命令，批量 ZIP 下载完成后可通过 **Native Messaging Host**（`native-host/`）解压并启动 `http-server`。需在设置页开启「下载完成后启动本地 HTTP 服务」并运行 `native-host/install-linux.sh <扩展ID>`。
+
 ---
 
 ## 2. 目录与职责
@@ -24,10 +26,11 @@ majdata-download-extension/
 │   ├── KNOWLEDGE_BASE.md    # 本文件
 │   └── rules/               # Cursor SSOT 规则
 └── src/                     # （待实现）见 docs/03-architecture.md
-    ├── background/          # Service Worker：队列、导出
+    ├── background/          # Service Worker：队列、导出、批量下载、localServer
     ├── content/             # 拦截、解析、确认框
     ├── popup/               # 列表 UI
-    └── shared/              # 类型、URL 构建、清洗
+    ├── shared/              # 类型、URL 构建、清洗、local-server 协议
+    └── native-host/         # Native Messaging：解压 ZIP + http-server（仓库根目录）
 ```
 
 ---
@@ -55,6 +58,24 @@ sequenceDiagram
   User->>Popup: 打开扩展
   Popup->>BG: QUEUE_LIST / EXPORT
   Popup->>User: 下载 .txt
+```
+
+**批量下载 + 本地 HTTP 服务：**
+
+```mermaid
+sequenceDiagram
+  participant Popup
+  participant BG as Background SW
+  participant DL as chrome.downloads
+  participant NH as Native Host
+
+  Popup->>BG: BATCH_START
+  BG->>BG: fetch assets → JSZip
+  BG->>DL: download ZIP
+  DL-->>BG: onChanged complete + filename
+  BG->>NH: serveZip
+  NH-->>BG: url + root
+  BG->>Popup: job.localServerUrl
 ```
 
 **队列主键：** `songId`

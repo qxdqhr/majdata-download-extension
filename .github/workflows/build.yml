@@ -31,3 +31,8 @@ jobs:
         with:
           name: chrome-mv3
           path: dist/chrome-mv3/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-mv3-zip
+          path: dist/*.zip

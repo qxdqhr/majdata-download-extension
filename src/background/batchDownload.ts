@@ -1,9 +1,6 @@
 import JSZip from 'jszip';
 import { browser } from 'wxt/browser';
-import {
-  notifyLocalServerStarted,
-  startLocalServerForDownload,
-} from '@/background/localServer';
+import { recordLastBatchZip, waitForDownloadPath } from '@/background/localServer';
 import {
   BATCH_JOB_STORAGE_KEY,
   BATCH_MAX_ITEMS,
@@ -65,11 +62,7 @@ function buildManifest(job: BatchJobState, total: number) {
   };
 }
 
-async function downloadZipArchive(
-  zip: JSZip,
-  filename: string,
-  saveAs: boolean,
-): Promise<number> {
+async function downloadZipArchive(zip: JSZip, filename: string): Promise<number> {
   // Service Worker 中无 URL.createObjectURL，使用 data URL 交给 downloads API
   const base64 = await zip.generateAsync({
     type: 'base64',
@@ -79,34 +72,14 @@ async function downloadZipArchive(
   return browser.downloads.download({
     url: `data:application/zip;base64,${base64}`,
     filename,
-    saveAs,
+    saveAs: false,
   });
 }
 
-async function tryAutoStartLocalServer(
-  downloadId: number,
-  settings: ExtensionSettings,
-  job: BatchJobState,
-): Promise<void> {
-  if (!settings.autoStartLocalServer) return;
-
-  job.currentTitle = '正在启动本地 HTTP 服务…';
-  await saveBatchJob({ ...job });
-
-  try {
-    const result = await startLocalServerForDownload(downloadId, settings);
-    if (result.ok && result.url) {
-      job.localServerUrl = result.url;
-      job.localServerError = undefined;
-      await notifyLocalServerStarted(result.url, result.root);
-      return;
-    }
-    job.localServerError = result.error ?? '本地 HTTP 服务启动失败';
-  } catch (error) {
-    job.localServerError = error instanceof Error ? error.message : '本地 HTTP 服务启动失败';
-  } finally {
-    job.currentTitle = '';
-    await saveBatchJob({ ...job });
+async function rememberDownloadedZip(downloadId: number): Promise<void> {
+  const downloadPath = await waitForDownloadPath(downloadId);
+  if (downloadPath) {
+    await recordLastBatchZip(downloadPath);
   }
 }
 
@@ -193,9 +166,11 @@ export async function startBatchDownload(
     }
 
     const filename = formatBatchZipFilename(settings.batchZipName);
-    const downloadId = await downloadZipArchive(zip, filename, !settings.autoStartLocalServer);
+    const downloadId = await downloadZipArchive(zip, filename);
 
-    await tryAutoStartLocalServer(downloadId, settings, job);
+    job.currentTitle = '正在保存 ZIP…';
+    await saveBatchJob({ ...job });
+    await rememberDownloadedZip(downloadId);
 
     job.status = 'done';
     job.current = items.length;

@@ -7,9 +7,12 @@ export default defineConfig({
   alias: {
     '@': resolve(__dirname, 'src'),
   },
-  // 手动加载 dist/chrome-mv3-dev/，避免 web-ext 在本机 Chrome 路径异常时 ECONNRESET 崩溃
+  // 手动加载 dist/chrome-mv3/；dev 时本地用 chrome-mv3-dev（含 localhost 引用，不可分发）
   webExt: {
     disabled: true,
+  },
+  zip: {
+    artifactTemplate: 'majdata-download-extension-{{version}}-{{browser}}.zip',
   },
   vite: () => ({
     optimizeDeps: {

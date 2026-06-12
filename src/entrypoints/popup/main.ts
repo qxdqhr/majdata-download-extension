@@ -5,6 +5,7 @@ import {
   showErrorAlert,
 } from '@/shared/import-ui';
 import { BATCH_JOB_STORAGE_KEY, BATCH_MAX_ITEMS, type BatchJobState } from '@/shared/batch-job';
+import { LOCAL_SERVER_STATE_KEY, type LocalServerUiState } from '@/shared/local-server-state';
 import type { BackgroundResponse, QueueItem } from '@/shared/types';
 import type { ExportFormat } from '@/shared/settings';
 
@@ -25,6 +26,22 @@ const openSettingsBtn = document.getElementById('open-settings')!;
 const removeSelectedBtn = document.getElementById('remove-selected') as HTMLButtonElement;
 const clearAllBtn = document.getElementById('clear-all') as HTMLButtonElement;
 
+const localServerToggleEl = document.getElementById('local-server-toggle') as HTMLInputElement;
+const localServerSummaryEl = document.getElementById('local-server-summary')!;
+const localServerSourceEl = document.getElementById('local-server-source') as HTMLSelectElement;
+const localServerActionsEl = document.getElementById('local-server-actions')!;
+const localServerOpenEl = document.getElementById('local-server-open') as HTMLAnchorElement;
+const localServerCopyEl = document.getElementById('local-server-copy') as HTMLButtonElement;
+const localServerStatusPanelEl = document.getElementById('local-server-status')!;
+const localServerSetupEl = document.getElementById('local-server-setup')!;
+const localServerSetupTitleEl = document.getElementById('local-server-setup-title')!;
+const localServerSetupStepsEl = document.getElementById('local-server-setup-steps')!;
+const localServerExtensionIdEl = document.getElementById('local-server-extension-id')!;
+const localServerDownloadInstallEl = document.getElementById('local-server-download-install') as HTMLButtonElement;
+const localServerCopyRunEl = document.getElementById('local-server-copy-run') as HTMLButtonElement;
+const localServerRunCommandEl = document.getElementById('local-server-run-command')!;
+const localServerSetupResultEl = document.getElementById('local-server-setup-result')!;
+
 const batchActionButtons: HTMLButtonElement[] = [
   batchSelectedBtn,
   batchAllBtn,
@@ -38,6 +55,8 @@ const batchActionButtons: HTMLButtonElement[] = [
 let items: QueueItem[] = [];
 let exportFormat: ExportFormat = 'txt';
 let lastNotifiedStatus: BatchJobState['status'] | null = null;
+let localServerBusy = false;
+let localServerState: LocalServerUiState | null = null;
 const selected = new Set<string>();
 
 function exportFormatLabel(format: ExportFormat): string {
@@ -91,19 +110,10 @@ function applyBatchJob(job: BatchJobState | null | undefined): void {
   if (job.status === 'done' && lastNotifiedStatus !== 'done') {
     lastNotifiedStatus = 'done';
     const failedHint = job.failed.length > 0 ? `\n\n失败 ${job.failed.length} 首（详见 ZIP 内 manifest.json）` : '';
-    const serverHint = job.localServerUrl
-      ? `\n\n本地服务：${job.localServerUrl}`
-      : job.localServerError
-        ? `\n\n本地服务未启动：${job.localServerError}`
-        : '';
-    alert(`批量下载完成\n\n成功 ${job.success}/${job.total} 首${failedHint}${serverHint}`);
+    alert(`批量下载完成\n\n成功 ${job.success}/${job.total} 首${failedHint}\n\n可在「本地分享」中选择 ZIP 并开启服务。`);
     batchPanel.classList.add('hidden');
-    const serverStatus = job.localServerUrl
-      ? `；本地服务 ${job.localServerUrl}`
-      : job.localServerError
-        ? `；本地服务失败：${job.localServerError}`
-        : '';
-    setStatus(`批量下载完成：成功 ${job.success}/${job.total} 首${serverStatus}`);
+    setStatus(`批量下载完成：成功 ${job.success}/${job.total} 首`);
+    void refreshLocalServerState();
     return;
   }
 
@@ -118,6 +128,219 @@ function applyBatchJob(job: BatchJobState | null | undefined): void {
     lastNotifiedStatus = 'cancelled';
     setStatus('已取消批量下载');
     batchPanel.classList.add('hidden');
+  }
+}
+
+async function refreshLocalServerState(): Promise<void> {
+  const response = await sendMessage<
+    { ok: true; localServerState: LocalServerUiState } | { ok: false; error: string }
+  >({ type: 'LOCAL_SERVER_GET_STATE' });
+
+  if (!response.ok || !('localServerState' in response)) {
+    return;
+  }
+
+  localServerState = response.localServerState;
+  applyLocalServerState(localServerState);
+}
+
+function formatRecentZipLabel(filename: string, startTime?: number): string {
+  if (startTime == null) return filename;
+  const date = new Date(startTime);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const stamp = `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${filename} · ${stamp}`;
+}
+
+function applyLocalServerState(state: LocalServerUiState): void {
+  localServerToggleEl.checked = state.running;
+  localServerToggleEl.disabled = localServerBusy || (!state.hostReady && !state.running);
+
+  if (state.running && state.url) {
+    localServerSummaryEl.textContent = `运行中：${state.url}`;
+    localServerStatusPanelEl.textContent = state.sourceLabel
+      ? `正在分享 ${state.sourceLabel}`
+      : '本地 HTTP 服务运行中';
+    localServerStatusPanelEl.className = 'local-server-status success';
+    localServerActionsEl.classList.remove('hidden');
+    localServerOpenEl.href = state.url;
+  } else if (state.error) {
+    localServerSummaryEl.textContent = '本地分享未启动';
+    localServerStatusPanelEl.textContent = state.error;
+    localServerStatusPanelEl.className = 'local-server-status error';
+    localServerActionsEl.classList.add('hidden');
+  } else {
+    localServerSummaryEl.textContent = state.hostReady
+      ? '开启后可本机访问谱面文件'
+      : '需先安装 Native Host（一次性）';
+    localServerStatusPanelEl.textContent = state.hostReady
+      ? '选择歌单 ZIP 后打开开关即可分享'
+      : (state.hostError ?? 'Native Host 未就绪');
+    localServerStatusPanelEl.className = state.hostReady ? 'local-server-status' : 'local-server-status error';
+    localServerActionsEl.classList.add('hidden');
+  }
+
+  localServerSetupEl.classList.toggle('hidden', state.hostReady);
+
+  const options: Array<{ path: string; label: string; selected: boolean }> = [];
+  if (state.recentZips.length === 0) {
+    options.push({ path: '', label: '暂无可用 ZIP（请先批量下载）', selected: true });
+  } else {
+    for (const item of state.recentZips) {
+      const selectedPath = state.sourceZip ?? state.lastBatchZip ?? state.recentZips[0]?.path;
+      options.push({
+        path: item.path,
+        label: formatRecentZipLabel(item.filename, item.startTime),
+        selected: item.path === selectedPath,
+      });
+    }
+  }
+
+  localServerSourceEl.innerHTML = options
+    .map(
+      (option) =>
+        `<option value="${escapeAttr(option.path)}" ${option.selected ? 'selected' : ''}>${escapeHtml(option.label)}</option>`,
+    )
+    .join('');
+  localServerSourceEl.disabled = localServerBusy || state.running || state.recentZips.length === 0;
+}
+
+async function loadLocalServerSetup(): Promise<void> {
+  const response = await sendMessage<
+    | {
+        ok: true;
+        setup: {
+          extensionId: string;
+          platform: 'macos' | 'linux' | 'unknown';
+          hints: { title: string; steps: string[]; downloadButtonLabel: string };
+        };
+      }
+    | { ok: false; error: string }
+  >({ type: 'LOCAL_SERVER_GET_SETUP' });
+
+  if (!response.ok || !('setup' in response)) return;
+
+  const { setup } = response;
+  localServerSetupTitleEl.textContent = setup.hints.title;
+  localServerExtensionIdEl.textContent = setup.extensionId;
+  localServerDownloadInstallEl.textContent = setup.hints.downloadButtonLabel;
+  localServerSetupStepsEl.innerHTML = setup.hints.steps
+    .map((step) => `<li>${escapeHtml(step)}</li>`)
+    .join('');
+}
+
+async function downloadNativeHostInstaller(): Promise<void> {
+  if (localServerDownloadInstallEl.disabled) return;
+
+  localServerDownloadInstallEl.disabled = true;
+  localServerSetupResultEl.classList.add('hidden');
+  localServerStatusPanelEl.textContent = '正在生成安装脚本…';
+  localServerStatusPanelEl.className = 'local-server-status';
+
+  try {
+    const response = await sendMessage<
+      | {
+          ok: true;
+          installer: {
+            filename: string;
+            savedPath: string;
+            runCommand: string;
+            platform: 'macos' | 'linux' | 'unknown';
+            hints: { title: string; steps: string[]; downloadButtonLabel: string };
+            renameHint?: string;
+          };
+        }
+      | { ok: false; error: string }
+    >({ type: 'LOCAL_SERVER_DOWNLOAD_INSTALLER' });
+
+    if (!response.ok || !('installer' in response)) {
+      showError('error' in response ? response.error : '无法下载安装脚本', '安装失败');
+      return;
+    }
+
+    const { installer } = response;
+    localServerRunCommandEl.textContent = installer.runCommand;
+    localServerRunCommandEl.classList.remove('hidden');
+    localServerCopyRunEl.classList.remove('hidden');
+
+    const renameHint = installer.renameHint ? `${installer.renameHint}\n\n` : '';
+    if (installer.platform === 'macos') {
+      localServerSetupResultEl.textContent = `${renameHint}已保存到：${installer.savedPath}\n请在 Finder 中双击「${installer.filename}」运行（会自动打开终端）。`;
+    } else {
+      localServerSetupResultEl.textContent = `${renameHint}已保存到：${installer.savedPath}\n请打开终端，运行下方命令（或把文件拖进终端后回车）。`;
+    }
+    localServerSetupResultEl.classList.remove('hidden');
+
+    localServerStatusPanelEl.textContent = '安装脚本已下载';
+    localServerStatusPanelEl.className = 'local-server-status success';
+
+    try {
+      await navigator.clipboard.writeText(installer.runCommand);
+      localServerStatusPanelEl.textContent += '，运行命令已复制到剪贴板';
+    } catch {
+      // clipboard optional
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '无法下载安装脚本';
+    showError(message, '安装失败');
+  } finally {
+    localServerDownloadInstallEl.disabled = false;
+  }
+}
+
+async function setLocalServerEnabled(enabled: boolean): Promise<void> {
+  if (localServerBusy) return;
+
+  localServerBusy = true;
+  localServerToggleEl.disabled = true;
+  localServerStatusPanelEl.textContent = enabled ? '正在启动本地服务…' : '正在停止本地服务…';
+  localServerStatusPanelEl.className = 'local-server-status';
+
+  try {
+    if (enabled) {
+      const zipPath = localServerSourceEl.value || undefined;
+      const response = await sendMessage<
+        { ok: true; localServerState: LocalServerUiState } | { ok: false; error: string }
+      >({
+        type: 'LOCAL_SERVER_START',
+        payload: zipPath ? { zipPath } : undefined,
+      });
+
+      if (!response.ok || !('localServerState' in response)) {
+        showError('error' in response ? response.error : '无法启动本地服务', '本地分享失败');
+        localServerToggleEl.checked = false;
+        return;
+      }
+
+      localServerState = response.localServerState;
+      applyLocalServerState(localServerState);
+      if (!localServerState.running) {
+        localServerToggleEl.checked = false;
+      }
+      return;
+    }
+
+    const response = await sendMessage<
+      { ok: true; localServerState: LocalServerUiState } | { ok: false; error: string }
+    >({ type: 'LOCAL_SERVER_STOP' });
+
+    if (!response.ok || !('localServerState' in response)) {
+      showError('error' in response ? response.error : '无法停止本地服务', '本地分享失败');
+      localServerToggleEl.checked = true;
+      return;
+    }
+
+    localServerState = response.localServerState;
+    applyLocalServerState(localServerState);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '本地服务操作失败';
+    showError(message, '本地分享失败');
+    await refreshLocalServerState();
+  } finally {
+    localServerBusy = false;
+    if (localServerState) {
+      applyLocalServerState(localServerState);
+    }
   }
 }
 
@@ -365,6 +588,38 @@ openSettingsBtn.addEventListener('click', () => {
   browser.runtime.openOptionsPage();
 });
 
+localServerToggleEl.addEventListener('change', () => {
+  void setLocalServerEnabled(localServerToggleEl.checked);
+});
+
+localServerCopyEl.addEventListener('click', async () => {
+  const url = localServerState?.url;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    localServerStatusPanelEl.textContent = '链接已复制到剪贴板';
+    localServerStatusPanelEl.className = 'local-server-status success';
+  } catch {
+    showError('无法复制链接', '复制失败');
+  }
+});
+
+localServerDownloadInstallEl.addEventListener('click', () => {
+  void downloadNativeHostInstaller();
+});
+
+localServerCopyRunEl.addEventListener('click', async () => {
+  const command = localServerRunCommandEl.textContent?.trim();
+  if (!command) return;
+  try {
+    await navigator.clipboard.writeText(command);
+    localServerStatusPanelEl.textContent = '运行命令已复制到剪贴板';
+    localServerStatusPanelEl.className = 'local-server-status success';
+  } catch {
+    showError('无法复制命令', '复制失败');
+  }
+});
+
 removeSelectedBtn.addEventListener('click', () => {
   removeItems([...selected]);
 });
@@ -399,8 +654,11 @@ browser.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'session' && changes[BATCH_JOB_STORAGE_KEY]) {
     applyBatchJob(changes[BATCH_JOB_STORAGE_KEY].newValue as BatchJobState | undefined);
   }
+  if (areaName === 'session' && changes[LOCAL_SERVER_STATE_KEY]) {
+    void refreshLocalServerState();
+  }
 });
 
-Promise.all([loadSettings(), loadItems(), refreshBatchStatus()]).catch(() =>
-  showError('无法加载扩展数据', '加载失败'),
+Promise.all([loadSettings(), loadItems(), refreshBatchStatus(), refreshLocalServerState(), loadLocalServerSetup()]).catch(
+  () => showError('无法加载扩展数据', '加载失败'),
 );

@@ -6,7 +6,16 @@ import {
   isBatchDownloadRunning,
   startBatchDownload,
 } from '@/background/batchDownload';
-import { pingNativeHost } from '@/background/localServer';
+import {
+  downloadNativeHostInstaller,
+  getNativeHostSetupInfo,
+} from '@/background/nativeHostInstaller';
+import {
+  getLocalServerUiState,
+  pingNativeHost,
+  startLocalServer,
+  stopLocalServer,
+} from '@/background/localServer';
 import { buildQueueExport } from '@/shared/export';
 import { parseQueueFile, rowsToQueueItems } from '@/shared/import';
 import {
@@ -118,6 +127,29 @@ async function handleMessage(message: BackgroundMessage): Promise<BackgroundResp
     case 'LOCAL_SERVER_PING': {
       const localServer = await pingNativeHost();
       return { ok: true, localServer };
+    }
+    case 'LOCAL_SERVER_GET_STATE': {
+      const localServerState = await getLocalServerUiState(settings);
+      return { ok: true, localServerState };
+    }
+    case 'LOCAL_SERVER_START': {
+      const localServerState = await startLocalServer(settings, message.payload?.zipPath);
+      return { ok: true, localServerState };
+    }
+    case 'LOCAL_SERVER_STOP': {
+      const localServerState = await stopLocalServer(settings);
+      return { ok: true, localServerState };
+    }
+    case 'LOCAL_SERVER_GET_SETUP': {
+      const setup = await getNativeHostSetupInfo();
+      return { ok: true, setup };
+    }
+    case 'LOCAL_SERVER_DOWNLOAD_INSTALLER': {
+      const result = await downloadNativeHostInstaller();
+      if (!result.ok) {
+        return { ok: false, error: result.error };
+      }
+      return { ok: true, installer: result };
     }
     default:
       return { ok: false, error: '未知消息类型' };

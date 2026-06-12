@@ -14,7 +14,6 @@ export interface ExtensionSettings {
   batchConcurrency: number;
   batchIncludeVideo: boolean;
   batchZipName: string;
-  autoStartLocalServer: boolean;
   localServerPort: number;
 }
 
@@ -29,7 +28,6 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   batchConcurrency: 1,
   batchIncludeVideo: true,
   batchZipName: 'majdata-playlist',
-  autoStartLocalServer: false,
   localServerPort: 8080,
 };
 

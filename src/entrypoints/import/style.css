@@ -1,58 +1,33 @@
-:root {
-  color-scheme: light;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
-}
-
-* {
-  box-sizing: border-box;
-}
+@import '../../shared/styles/animal-island.css';
 
 body {
-  margin: 0;
+  background: linear-gradient(180deg, #eef8f2 0%, var(--animal-bg) 120px);
 }
 
 #app {
-  padding: 20px;
+  padding: 24px;
   min-height: 100vh;
+  max-width: 420px;
+  margin: 0 auto;
 }
 
 h1 {
-  margin: 0 0 8px;
-  font-size: 18px;
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--animal-text);
 }
 
 .hint {
-  margin: 0 0 16px;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 0 0 18px;
+  line-height: 1.55;
 }
 
-.btn {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #0f172a;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.btn.primary {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #fff;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+#pick-btn {
+  width: 100%;
 }
 
 .status {
-  margin: 14px 0 0;
-  font-size: 13px;
-  color: #64748b;
+  margin-top: 16px;
+  font-weight: 600;
 }

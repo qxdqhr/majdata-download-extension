@@ -18,6 +18,44 @@
         </div>
       </header>
 
+      <section id="local-server-panel" class="local-server-panel animal-card">
+        <div class="local-server-head">
+          <div>
+            <p class="local-server-title">本地分享</p>
+            <p id="local-server-summary" class="local-server-summary">通过本机 HTTP 共享谱面</p>
+          </div>
+          <label class="switch" title="开启/关闭本地 HTTP 服务">
+            <input id="local-server-toggle" type="checkbox" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <label class="local-server-field">
+          <span class="local-server-label">分享来源</span>
+          <select id="local-server-source" class="local-server-select"></select>
+        </label>
+
+        <div id="local-server-actions" class="local-server-actions hidden">
+          <a id="local-server-open" class="btn linkish" href="#" target="_blank" rel="noreferrer">打开</a>
+          <button id="local-server-copy" type="button" class="btn">复制链接</button>
+        </div>
+
+        <p id="local-server-status" class="local-server-status"></p>
+
+        <details id="local-server-setup" class="local-server-setup hidden">
+          <summary id="local-server-setup-title">首次使用：安装本机助手（一次性）</summary>
+          <p class="local-server-setup-hint">扩展无法直接运行 http-server，需安装本机助手。无需克隆仓库或手动建目录，点击下方按钮即可。</p>
+          <ol id="local-server-setup-steps" class="local-server-setup-steps"></ol>
+          <p class="local-server-setup-id">扩展 ID：<code id="local-server-extension-id" class="animal-code-inline"></code></p>
+          <div class="local-server-setup-actions">
+            <button id="local-server-download-install" type="button" class="btn accent">下载安装脚本</button>
+            <button id="local-server-copy-run" type="button" class="btn hidden">复制运行命令</button>
+          </div>
+          <pre id="local-server-run-command" class="local-server-command animal-code hidden"></pre>
+          <p id="local-server-setup-result" class="local-server-setup-result hidden"></p>
+        </details>
+      </section>
+
       <div class="toolbar">
         <label class="checkbox-row">
           <input id="select-all" type="checkbox" />
@@ -27,7 +65,7 @@
 
       <main id="list" class="list" aria-live="polite"></main>
 
-      <section id="batch-panel" class="batch-panel hidden" aria-live="polite">
+      <section id="batch-panel" class="batch-panel animal-card dashed hidden" aria-live="polite">
         <div class="progress-track">
           <div id="progress-fill" class="progress-fill"></div>
         </div>
